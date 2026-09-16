@@ -742,7 +742,7 @@ async function generate(){
     return;
   }
 
-  if(!CONFIG.API_URL || CONFIG.API_URL.includes('PASTE_YOUR')){
+  if(!CONFIG.API_URL || CONFIG.API_URL.includes('https://ipod-athens-blues-robots.trycloudflare.com')){
     statusLine.textContent = 'Backend not connected yet — paste your Colab tunnel URL into CONFIG.API_URL in the script.';
     statusLine.className = 'status-line error';
     return;
