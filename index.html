@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGK Pro — AI Video Engine for Creators</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:            #0A1418;
+    --bg-raised:     #0F1B20;
+    --panel:         #12232A;
+    --line:          #1E353D;
+    --orange:        #FF7A32;
+    --orange-dim:    #DC6323;
+    --cyan:          #4FD1D9;
+    --cyan-dim:      #2F9BA3;
+    --text:          #EAF2F2;
+    --text-muted:    #7C9296;
+    --text-faint:    #4A5C60;
+    --display: 'Oswald', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{ color:inherit; text-decoration:none; }
+  img,svg{ display:block; max-width:100%; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; }
+
+  ::selection{ background:var(--orange); color:#0A1418; }
+
+  :focus-visible{
+    outline:2px solid var(--cyan);
+    outline-offset:3px;
+  }
+
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 32px;
+  }
+
+  @media (max-width:640px){
+    .wrap{ padding:0 20px; }
+  }
+
+  /* film grain texture, subtle */
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:2;
+    opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- NAV ---------- */
+  header{
+    position:sticky;
+    top:0;
+    z-index:10;
+    background:rgba(10,20,24,.86);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height:72px;
+  }
+  .logo{
+    font-family:var(--display);
+    font-weight:600;
+    font-size:22px;
+    letter-spacing:.02em;
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+  }
+  .logo span{ color:var(--orange); }
+  .nav-links{
+    display:flex;
+    align-items:center;
+    gap:36px;
+    font-size:15px;
+    color:var(--text-muted);
+  }
+  .nav-links a:hover{ color:var(--text); }
+  .nav-cta{
+    padding:10px 20px;
+    background:var(--orange);
+    color:#0A1418;
+    font-weight:600;
+    font-size:14px;
+    border-radius:3px;
+    transition:background .15s ease;
+  }
+  .nav-cta:hover{ background:#ff8a49; }
+  .nav-toggle{ display:none; }
+
+  @media (max-width:800px){
+    .nav-links a:not(.nav-cta){ display:none; }
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:96px 0 64px;
+    position:relative;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:64px;
+    align-items:center;
+  }
+  @media (max-width:900px){
+    .hero-grid{ grid-template-columns:1fr; gap:48px; }
+  }
+
+  .kicker{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--cyan);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:24px;
+  }
+  .kicker .rec{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--orange);
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:.25; }
+  }
+
+  h1.headline{
+    font-family:var(--display);
+    font-weight:600;
+    font-size:clamp(40px, 6vw, 72px);
+    line-height:1.02;
+    letter-spacing:-.01em;
+    text-transform:uppercase;
+    max-width:11ch;
+  }
+  h1.headline em{
+    font-style:normal;
+    color:var(--orange);
+  }
+
+  .hero-sub{
+    margin-top:24px;
+    font-size:18px;
+    color:var(--text-muted);
+    max-width:46ch;
+  }
+
+  /* prompt bar styled as a timeline scrub row */
+  .prompt-rig{
+    margin-top:40px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px;
+  }
+  .prompt-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .prompt-row input{
+    flex:1;
+    background:transparent;
+    border:none;
+    color:var(--text);
+    font-family:var(--body);
+    font-size:15px;
+    padding:14px 12px;
+  }
+  .prompt-row input::placeholder{ color:var(--text-faint); }
+  .prompt-row input:focus{ outline:none; }
+  .render-btn{
+    background:var(--orange);
+    color:#0A1418;
+    font-weight:600;
+    font-size:14px;
+    padding:14px 22px;
+    border-radius:4px;
+    white-space:nowrap;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .render-btn:hover{ background:#ff8a49; }
+  .render-btn:active{ transform:scale(.98); }
+  .render-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .scrub{
+    margin-top:8px;
+    height:34px;
+    display:flex;
+    align-items:center;
+    gap:2px;
+    padding:0 12px;
+    position:relative;
+  }
+  .scrub .tick{
+    width:1px;
+    height:10px;
+    background:var(--line);
+    flex:1;
+  }
+  .scrub .tick.major{ height:16px; background:var(--text-faint); }
+  .playhead{
+    position:absolute;
+    top:0; bottom:0;
+    width:2px;
+    background:var(--cyan);
+    left:0;
+    box-shadow:0 0 8px var(--cyan);
+  }
+
+  .status-line{
+    margin-top:14px;
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text-faint);
+    min-height:18px;
+  }
+  .status-line.active{ color:var(--cyan); }
+  .status-line.error{ color:var(--orange); }
+
+  .result-frame{
+    margin-top:20px;
+    display:none;
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+    background:#000;
+  }
+  .result-frame.show{ display:block; }
+  .result-frame video{ width:100%; display:block; }
+
+  /* hero visual: stacked filmstrip */
+  .hero-visual{
+    position:relative;
+  }
+  .filmstrip{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    transform:rotate(-2deg);
+  }
+  .frame-card{
+    aspect-ratio:16/9;
+    border-radius:6px;
+    border:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+  }
+  .frame-card::after{
+    content:attr(data-tc);
+    position:absolute;
+    bottom:8px; right:10px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:rgba(234,242,242,.75);
+    background:rgba(0,0,0,.4);
+    padding:2px 6px;
+    border-radius:3px;
+  }
+  .frame-card.f1{ background:linear-gradient(135deg,#1B3A3D,#0A1418 70%); }
+  .frame-card.f2{ background:linear-gradient(135deg,#3A2415,#0A1418 70%); width:88%; align-self:flex-end; }
+  .frame-card.f3{ background:linear-gradient(135deg,#1B3A3D,#3A2415); width:96%; }
+
+  /* ---------- SECTION HEADERS ---------- */
+  .section{ padding:88px 0; border-top:1px solid var(--line); }
+  .section-head{
+    max-width:52ch;
+    margin-bottom:56px;
+  }
+  .section-head h2{
+    font-family:var(--display);
+    font-weight:600;
+    font-size:clamp(28px,3.4vw,40px);
+    text-transform:uppercase;
+    letter-spacing:-.005em;
+  }
+  .section-head p{
+    margin-top:14px;
+    color:var(--text-muted);
+    font-size:16px;
+  }
+
+  /* ---------- HOW IT WORKS (real sequence -> numbered ok) ---------- */
+  .steps{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:0;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  @media (max-width:800px){
+    .steps{ grid-template-columns:1fr; }
+  }
+  .step{
+    padding:36px 32px;
+    border-right:1px solid var(--line);
+    position:relative;
+  }
+  .step:last-child{ border-right:none; }
+  @media (max-width:800px){
+    .step{ border-right:none; border-bottom:1px solid var(--line); }
+    .step:last-child{ border-bottom:none; }
+  }
+  .step .num{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--orange);
+  }
+  .step h3{
+    margin-top:16px;
+    font-family:var(--display);
+    font-size:20px;
+    font-weight:500;
+    text-transform:uppercase;
+  }
+  .step p{
+    margin-top:10px;
+    color:var(--text-muted);
+    font-size:15px;
+  }
+
+  /* ---------- GALLERY ---------- */
+  .gallery{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+  }
+  @media (max-width:800px){
+    .gallery{ grid-template-columns:repeat(2,1fr); }
+  }
+  @media (max-width:520px){
+    .gallery{ grid-template-columns:1fr; }
+  }
+  .clip{
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+    background:var(--panel);
+  }
+  .clip-thumb{
+    aspect-ratio:16/10;
+    position:relative;
+  }
+  .clip-thumb::after{
+    content:attr(data-dur);
+    position:absolute;
+    bottom:8px; right:8px;
+    font-family:var(--mono);
+    font-size:11px;
+    background:rgba(0,0,0,.5);
+    padding:2px 6px;
+    border-radius:3px;
+  }
+  .clip-thumb.c1{ background:radial-gradient(circle at 30% 30%,#2F9BA3,#0A1418 65%); }
+  .clip-thumb.c2{ background:radial-gradient(circle at 70% 40%,#DC6323,#0A1418 65%); }
+  .clip-thumb.c3{ background:radial-gradient(circle at 50% 70%,#3D5A5E,#0A1418 65%); }
+  .clip-thumb.c4{ background:radial-gradient(circle at 40% 60%,#7A4A22,#0A1418 65%); }
+  .clip-thumb.c5{ background:radial-gradient(circle at 60% 30%,#215F63,#0A1418 65%); }
+  .clip-thumb.c6{ background:radial-gradient(circle at 50% 50%,#5A3A1E,#0A1418 65%); }
+  .clip-info{ padding:14px 16px; }
+  .clip-info .prompt{ font-size:14px; color:var(--text); }
+  .clip-info .meta{
+    margin-top:6px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-faint);
+  }
+
+  /* ---------- PRICING ---------- */
+  .plans{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+  }
+  @media (max-width:800px){
+    .plans{ grid-template-columns:1fr; }
+  }
+  .plan{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:32px 28px;
+    background:var(--bg-raised);
+  }
+  .plan.featured{
+    border-color:var(--orange);
+    background:linear-gradient(180deg,rgba(255,122,50,.06),transparent 40%);
+  }
+  .plan-name{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  .plan-price{
+    margin-top:12px;
+    font-family:var(--display);
+    font-size:38px;
+    font-weight:600;
+  }
+  .plan-price span{
+    font-family:var(--body);
+    font-size:14px;
+    color:var(--text-muted);
+    font-weight:400;
+  }
+  .plan-feat{
+    margin-top:22px;
+    list-style:none;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    font-size:14px;
+    color:var(--text-muted);
+  }
+  .plan-feat li{ display:flex; gap:10px; }
+  .plan-feat li::before{
+    content:"";
+    width:5px; height:5px;
+    margin-top:7px;
+    background:var(--cyan);
+    flex-shrink:0;
+  }
+  .plan-cta{
+    margin-top:26px;
+    display:block;
+    text-align:center;
+    padding:12px;
+    border-radius:4px;
+    border:1px solid var(--line);
+    font-weight:600;
+    font-size:14px;
+  }
+  .plan.featured .plan-cta{ background:var(--orange); color:#0A1418; border-color:var(--orange); }
+  .plan-cta:hover{ border-color:var(--cyan); }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--line);
+    padding:48px 0;
+  }
+  .footer-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .footer-row .logo{ font-size:18px; }
+  .footer-links{
+    display:flex;
+    gap:28px;
+    font-size:14px;
+    color:var(--text-muted);
+  }
+  .footer-links a:hover{ color:var(--text); }
+  .footer-copy{
+    margin-top:24px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--text-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .kicker .rec{ animation:none; }
+    html{ scroll-behavior:auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <nav>
+      <div class="logo">MGK<span>Pro</span></div>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#try" class="nav-cta">Try the engine</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="kicker"><span class="rec"></span> LIVE ENGINE · TEXT TO VIDEO</div>
+      <h1 class="headline">Type a scene. <em>Get the footage.</em></h1>
+      <p class="hero-sub">MGK Pro turns a single line of description into a rendered video clip — built for creators who need footage on a deadline, not a film crew.</p>
+
+      <div class="prompt-rig" id="try">
+        <div class="prompt-row">
+          <input type="text" id="promptInput" placeholder="e.g. drone shot over a neon night market, rain, 4k" />
+          <button class="render-btn" id="renderBtn">Generate</button>
+        </div>
+        <div class="scrub" id="scrub" aria-hidden="true">
+          <div class="playhead" id="playhead"></div>
+        </div>
+      </div>
+      <div class="status-line" id="statusLine">Engine idle · enter a prompt to begin</div>
+      <div class="result-frame" id="resultFrame">
+        <video id="resultVideo" controls></video>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="filmstrip">
+        <div class="frame-card f1" data-tc="00:00:04:12"></div>
+        <div class="frame-card f2" data-tc="00:00:09:03"></div>
+        <div class="frame-card f3" data-tc="00:00:14:20"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Three steps to a finished clip</h2>
+      <p>No timeline to edit, no keyframes to set. Describe the shot, the engine renders it, you download the file.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h3>Describe the shot</h3>
+        <p>Write what you want to see — subject, camera move, mood, lighting. Plain language, no prompt syntax to memorise.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3>Engine renders</h3>
+        <p>MGK Pro generates the sequence frame by frame on GPU, typically inside a minute for a short clip.</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3>Download & cut</h3>
+        <p>Pull the MP4 straight into your edit. No watermark on paid plans, ready for the timeline.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="gallery">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Rendered by the engine</h2>
+      <p>A sample of clips generated from a single line of text.</p>
+    </div>
+    <div class="gallery">
+      <div class="clip">
+        <div class="clip-thumb c1" data-dur="0:08"></div>
+        <div class="clip-info">
+          <div class="prompt">"Submarine corridor, flickering red alarm lights"</div>
+          <div class="meta">1080P · 24FPS</div>
+        </div>
+      </div>
+      <div class="clip">
+        <div class="clip-thumb c2" data-dur="0:12"></div>
+        <div class="clip-info">
+          <div class="prompt">"Campfire at dusk, embers rising, slow pan"</div>
+          <div class="meta">4K · 30FPS</div>
+        </div>
+      </div>
+      <div class="clip">
+        <div class="clip-thumb c3" data-dur="0:06"></div>
+        <div class="clip-info">
+          <div class="prompt">"Empty subway platform, train arriving, motion blur"</div>
+          <div class="meta">1080P · 24FPS</div>
+        </div>
+      </div>
+      <div class="clip">
+        <div class="clip-thumb c4" data-dur="0:10"></div>
+        <div class="clip-info">
+          <div class="prompt">"Desert highway at golden hour, heat haze"</div>
+          <div class="meta">4K · 24FPS</div>
+        </div>
+      </div>
+      <div class="clip">
+        <div class="clip-thumb c5" data-dur="0:07"></div>
+        <div class="clip-info">
+          <div class="prompt">"Rooftop garden in the rain, top-down shot"</div>
+          <div class="meta">1080P · 30FPS</div>
+        </div>
+      </div>
+      <div class="clip">
+        <div class="clip-thumb c6" data-dur="0:09"></div>
+        <div class="clip-info">
+          <div class="prompt">"Factory floor, sparks from a welding arm"</div>
+          <div class="meta">4K · 24FPS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Built for creators, priced for them too</h2>
+      <p>Start free, upgrade when you're rendering daily.</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">₹0<span>/month</span></div>
+        <ul class="plan-feat">
+          <li>10 renders / month</li>
+          <li>Up to 8 second clips</li>
+          <li>720p output</li>
+          <li>Watermarked</li>
+        </ul>
+        <a href="#try" class="plan-cta">Start free</a>
+      </div>
+      <div class="plan featured">
+        <div class="plan-name">Creator</div>
+        <div class="plan-price">₹499<span>/month</span></div>
+        <ul class="plan-feat">
+          <li>200 renders / month</li>
+          <li>Up to 20 second clips</li>
+          <li>1080p output</li>
+          <li>No watermark</li>
+        </ul>
+        <a href="#try" class="plan-cta">Go Creator</a>
+      </div>
+      <div class="plan">
+        <div class="plan-name">Studio</div>
+        <div class="plan-price">₹1,499<span>/month</span></div>
+        <ul class="plan-feat">
+          <li>Unlimited renders</li>
+          <li>Up to 60 second clips</li>
+          <li>4K output</li>
+          <li>Priority render queue</li>
+        </ul>
+        <a href="#try" class="plan-cta">Go Studio</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-row">
+      <div class="logo">MGK<span>Pro</span></div>
+      <div class="footer-links">
+        <a href="#how">How it works</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#pricing">Pricing</a>
+      </div>
+    </div>
+    <div class="footer-copy">MGK PRO ENGINE · text-to-video rendering</div>
+  </div>
+</footer>
+
+<script>
+/* ======================================================================
+   CONFIG — paste your live Colab / cloudflare tunnel URL here every time
+   you restart the Colab notebook. This is the ONLY line you need to
+   touch when the backend URL changes.
+   ====================================================================== */
+const CONFIG = {
+  API_URL: "PASTE_YOUR_TRYCLOUDFLARE_URL_HERE", // e.g. "https://random-words-1234.trycloudflare.com"
+  GENERATE_ENDPOINT: "/generate" // change if your FastAPI route is named differently
+};
+
+const promptInput  = document.getElementById('promptInput');
+const renderBtn    = document.getElementById('renderBtn');
+const statusLine   = document.getElementById('statusLine');
+const playhead     = document.getElementById('playhead');
+const scrub        = document.getElementById('scrub');
+const resultFrame  = document.getElementById('resultFrame');
+const resultVideo  = document.getElementById('resultVideo');
+
+// build the tick marks along the scrub bar
+(function buildTicks(){
+  const total = 40;
+  for(let i=0;i<total;i++){
+    const t = document.createElement('div');
+    t.className = 'tick' + (i % 5 === 0 ? ' major' : '');
+    scrub.insertBefore(t, playhead);
+  }
+})();
+
+let playheadTimer = null;
+function startPlayhead(){
+  let pos = 0;
+  playheadTimer = setInterval(()=>{
+    pos = (pos + 1) % 101;
+    playhead.style.left = pos + '%';
+  }, 60);
+}
+function stopPlayhead(){
+  clearInterval(playheadTimer);
+  playhead.style.left = '0%';
+}
+
+async function generate(){
+  const prompt = promptInput.value.trim();
+  if(!prompt){
+    statusLine.textContent = 'Type a prompt first';
+    statusLine.className = 'status-line error';
+    return;
+  }
+
+  if(!CONFIG.API_URL || CONFIG.API_URL.includes('PASTE_YOUR')){
+    statusLine.textContent = 'Backend not connected yet — paste your Colab tunnel URL into CONFIG.API_URL in the script.';
+    statusLine.className = 'status-line error';
+    return;
+  }
+
+  renderBtn.disabled = true;
+  resultFrame.classList.remove('show');
+  statusLine.textContent = 'Sending prompt to engine…';
+  statusLine.className = 'status-line active';
+  startPlayhead();
+
+  try{
+    const res = await fetch(CONFIG.API_URL.replace(/\/$/, '') + CONFIG.GENERATE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if(!res.ok){
+      throw new Error('Engine responded with status ' + res.status);
+    }
+
+    const data = await res.json();
+    // Expecting something like { video_url: "https://..." }
+    // adjust this line to match whatever key your FastAPI route returns
+    const videoUrl = data.video_url || data.url || data.result;
+
+    if(!videoUrl){
+      throw new Error('No video URL in engine response');
+    }
+
+    resultVideo.src = videoUrl;
+    resultFrame.classList.add('show');
+    statusLine.textContent = 'Render complete';
+    statusLine.className = 'status-line active';
+
+  }catch(err){
+    statusLine.textContent = 'Failed: ' + err.message;
+    statusLine.className = 'status-line error';
+  }finally{
+    stopPlayhead();
+    renderBtn.disabled = false;
+  }
+}
+
+renderBtn.addEventListener('click', generate);
+promptInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') generate();
+});
+</script>
+
+</body>
+</html>
